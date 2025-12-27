@@ -58,7 +58,7 @@ export class GeminiContentGenerator implements ContentGenerator {
       return defaultValue;
     };
 
-    return {
+    const config: GenerateContentConfig = {
       ...requestConfig,
       temperature: getParameterValue<number>(
         configSamplingParams?.temperature,
@@ -83,15 +83,17 @@ export class GeminiContentGenerator implements ContentGenerator {
         configSamplingParams?.frequency_penalty,
         'frequencyPenalty',
       ),
-      thinkingConfig: getParameterValue(
-        this.buildThinkingConfig(),
-        'thinkingConfig',
-        {
-          includeThoughts: true,
-          thinkingLevel: 'THINKING_LEVEL_UNSPECIFIED' as ThinkingLevel,
-        },
-      ),
     };
+
+    const thinkingConfig = getParameterValue(
+      this.buildThinkingConfig(),
+      'thinkingConfig',
+    );
+    if (thinkingConfig !== undefined) {
+      config.thinkingConfig = thinkingConfig;
+    }
+
+    return config;
   }
 
   private buildThinkingConfig():
@@ -129,6 +131,9 @@ export class GeminiContentGenerator implements ContentGenerator {
       ...request,
       config: this.buildGenerateContentConfig(request),
     };
+    if (process.env['DEBUG_RAG']) {
+      console.log('[DEBUG_RAG] generateContent request:', JSON.stringify(finalRequest, null, 2));
+    }
     return this.googleGenAI.models.generateContent(finalRequest);
   }
 
@@ -140,6 +145,9 @@ export class GeminiContentGenerator implements ContentGenerator {
       ...request,
       config: this.buildGenerateContentConfig(request),
     };
+    if (process.env['DEBUG_RAG']) {
+      console.log('[DEBUG_RAG] generateContentStream request:', JSON.stringify(finalRequest, null, 2));
+    }
     return this.googleGenAI.models.generateContentStream(finalRequest);
   }
 

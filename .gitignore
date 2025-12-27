@@ -49,6 +49,14 @@ packages/core/src/generated/
 .integration-tests/
 packages/vscode-ide-companion/*.vsix
 
+# Generated TypeScript build files in packages
+packages/**/*.js
+packages/**/*.js.map
+packages/**/*.d.ts
+
+# Ignore temporary files in packages/core
+packages/core/tmp/
+
 # Qwen Code Configs
 .qwen/
 logs/
@@ -57,8 +65,10 @@ gha-creds-*.json
 
 # Log files
 patch_output.log
+rag-code-launcher.sh
 
 # docs build
 docs-site/.next
 # content is a symlink to ../docs
 docs-site/content
+.npm-cache

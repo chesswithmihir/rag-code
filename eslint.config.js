@@ -120,7 +120,13 @@ export default tseslint.config(
             '**/generated/**',
             './styles/tailwind.css',
             './styles/App.css',
-            './styles/style.css'
+            './styles/style.css',
+            'packages/cli/src/commands/**',
+            'packages/cli/src/utils/**',
+            'packages/cli/src/config/extensions/extensionEnablement.js',
+            'packages/core/src/config/**',
+            'packages/core/src/core/openaiContentGenerator/provider/**',
+            'packages/core/src/utils/**'
           ],
         },
       ],

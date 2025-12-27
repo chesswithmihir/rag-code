@@ -8,7 +8,6 @@ import {
   ApprovalMode,
   AuthType,
   Config,
-  DEFAULT_QWEN_EMBEDDING_MODEL,
   DEFAULT_MEMORY_FILE_FILTERING_OPTIONS,
   EditTool,
   FileDiscoveryService,
@@ -937,7 +936,7 @@ export async function loadCliConfig(
   return new Config({
     sessionId,
     sessionData,
-    embeddingModel: DEFAULT_QWEN_EMBEDDING_MODEL,
+    embeddingModel: 'nomic-embed-text',
     sandbox: sandboxConfig,
     targetDir: cwd,
     includeDirectories,

@@ -249,8 +249,15 @@ export class ContentGenerationPipeline {
       );
     }
 
-    // Let provider enhance the request (e.g., add metadata, cache control)
-    return this.config.provider.buildRequest(baseRequest, userPromptId);
+    const finalRequest = await this.config.provider.buildRequest(baseRequest, userPromptId);
+    
+    // Always log the request if DEBUG_RAG is set, providing proof of history and RAG injection
+    if (process.env['DEBUG_RAG']) {
+      console.log('\x1b[35m[DEBUG_RAG] Sending request to Ollama:\x1b[0m');
+      console.log(JSON.stringify(finalRequest, null, 2));
+    }
+    
+    return finalRequest;
   }
 
   private buildGenerateContentConfig(
@@ -319,12 +326,12 @@ export class ContentGenerationPipeline {
   private buildReasoningConfig(): Record<string, unknown> {
     const reasoning = this.contentGeneratorConfig.reasoning;
 
-    if (reasoning === false) {
+    if (!reasoning || (reasoning as unknown) === false) {
       return {};
     }
 
     return {
-      reasoning_effort: reasoning?.effort ?? 'medium',
+      reasoning_effort: (reasoning as any).effort ?? 'medium',
     };
   }
 

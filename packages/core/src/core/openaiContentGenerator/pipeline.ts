@@ -249,8 +249,11 @@ export class ContentGenerationPipeline {
       );
     }
 
-    // Let provider enhance the request (e.g., add metadata, cache control)
-    return this.config.provider.buildRequest(baseRequest, userPromptId);
+    const finalRequest = await this.config.provider.buildRequest(baseRequest, userPromptId);
+    if (process.env['DEBUG_RAG']) {
+      console.log('[DEBUG_RAG] OpenAI request:', JSON.stringify(finalRequest, null, 2));
+    }
+    return finalRequest;
   }
 
   private buildGenerateContentConfig(
@@ -319,12 +322,12 @@ export class ContentGenerationPipeline {
   private buildReasoningConfig(): Record<string, unknown> {
     const reasoning = this.contentGeneratorConfig.reasoning;
 
-    if (reasoning === false) {
+    if (!reasoning || (reasoning as unknown) === false) {
       return {};
     }
 
     return {
-      reasoning_effort: reasoning?.effort ?? 'medium',
+      reasoning_effort: (reasoning as any).effort ?? 'medium',
     };
   }
 

@@ -11,6 +11,7 @@ import type {
   GenerateContentResponse,
   PartListUnion,
   Tool,
+  Part,
 } from '@google/genai';
 
 // Config
@@ -73,6 +74,7 @@ import { type File, type IdeContext } from '../ide/types.js';
 
 // Fallback handling
 import { handleFallback } from '../fallback/handler.js';
+import { VectorStoreService } from '../services/memory/vectorStoreService.js';
 
 const MAX_TURNS = 100;
 
@@ -85,18 +87,31 @@ export class GeminiClient {
   private lastSentIdeContext: IdeContext | undefined;
   private forceFullIdeContext = true;
 
+  private _vectorStore?: VectorStoreService;
+
   /**
    * At any point in this conversation, was compression triggered without
    * being forced and did it fail?
    */
   private hasFailedCompressionAttempt = false;
 
-  constructor(private readonly config: Config) {
+  constructor(
+    private readonly config: Config,
+    vectorStore?: VectorStoreService,
+  ) {
     this.loopDetector = new LoopDetectionService(config);
+    this._vectorStore = vectorStore;
+  }
+
+  get vectorStore(): VectorStoreService | undefined {
+    return this._vectorStore;
   }
 
   async initialize() {
     this.lastPromptId = this.config.getSessionId();
+    if (!this._vectorStore) {
+      this._vectorStore = new VectorStoreService(this.config);
+    }
 
     // Check if we're resuming from a previous session
     const resumedSessionData = this.config.getResumedSessionData();
@@ -489,6 +504,24 @@ export class GeminiClient {
       this.forceFullIdeContext = false;
     }
 
+    // Retrieve relevant context from RAG
+    let ragContextPart: string | undefined;
+    if (this.vectorStore && typeof this.vectorStore.search === 'function' && !options?.isContinuation) {
+      const queryText = (Array.isArray(request) ? request : [request])
+        .filter((p) => typeof p === 'string' || (typeof p === 'object' && p !== null && 'text' in p))
+        .map((p) => (typeof p === 'string' ? p : (p as Part).text))
+        .join(' ');
+
+      if (queryText.trim().length > 0) {
+        const snippets = await this.vectorStore.search(queryText);
+        if (snippets.length > 0) {
+          ragContextPart = `Here is relevant context retrieved from your long-term memory:\n\n${snippets
+            .map((s) => `[File: ${s.metadata['path'] ?? 'unknown'}]\n${s.text}`)
+            .join('\n\n---\n\n')}`;
+        }
+      }
+    }
+
     const turn = new Turn(this.getChat(), prompt_id);
 
     if (!this.config.getSkipLoopDetection()) {
@@ -503,6 +536,10 @@ export class GeminiClient {
     let requestToSent = await flatMapTextParts(request, async (text) => [text]);
     if (!options?.isContinuation) {
       const systemReminders = [];
+
+      if (ragContextPart) {
+        systemReminders.push({ text: ragContextPart });
+      }
 
       // add subagent system reminder if there are subagents
       const hasTaskTool = this.config.getToolRegistry().getTool(TaskTool.Name);

@@ -34,6 +34,7 @@ import {
 import { getCoreSystemPrompt } from './prompts.js';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/models.js';
 import { FileDiscoveryService } from '../services/fileDiscoveryService.js';
+import { VectorStoreService } from '../services/memory/vectorStoreService.js';
 import { setSimulate429 } from '../utils/testUtils.js';
 import { tokenLimit } from './tokenLimits.js';
 import { ideContextStore } from '../ide/ideContext.js';
@@ -69,6 +70,18 @@ vi.mock('node:fs', () => {
 // --- Mocks ---
 const mockTurnRunFn = vi.fn();
 
+const { mockSearch, mockAddText } = vi.hoisted(() => ({
+  mockSearch: vi.fn().mockResolvedValue([]),
+  mockAddText: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../services/memory/vectorStoreService.js', () => ({
+  VectorStoreService: vi.fn().mockImplementation(() => ({
+    search: mockSearch,
+    addText: mockAddText,
+  })),
+}));
+
 vi.mock('./turn', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./turn.js')>();
   // Define a mock class that has the same shape as the real Turn
@@ -77,7 +90,7 @@ vi.mock('./turn', async (importOriginal) => {
     // The run method is a property that holds our mock function
     run = mockTurnRunFn;
 
-    constructor() {
+    constructor(_chat: any, _prompt_id: any, _vectorStore?: any) {
       // The constructor can be empty or do some mock setup
     }
   }
@@ -344,7 +357,7 @@ describe('Gemini Client (client.ts)', () => {
       getResumedSessionData: vi.fn().mockReturnValue(undefined),
     } as unknown as Config;
 
-    client = new GeminiClient(mockConfig);
+    client = new GeminiClient(mockConfig, new (VectorStoreService as any)());
     await client.initialize();
     vi.mocked(mockConfig.getGeminiClient).mockReturnValue(client);
   });
